@@ -1,0 +1,3 @@
+- insert:
+    - id: session-quote
+      name: '@jacksun1994/dsh-session-quote'

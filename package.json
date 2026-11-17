@@ -1,0 +1,55 @@
+{
+  "name": "@jacksun1994/dsh-session-quote",
+  "version": "0.1.0",
+  "description": "Quote one message from an earlier session into the composer as an inline quote.",
+  "type": "module",
+  "license": "MIT",
+  "author": "yyliucha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yyliucha/dsh-session-quote.git"
+  },
+  "homepage": "https://github.com/yyliucha/dsh-session-quote#readme",
+  "bugs": {
+    "url": "https://github.com/yyliucha/dsh-session-quote/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "quote",
+    "session"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "assets/icon-180.png",
+    "assets/icon-512.png",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.6-alpha.2"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}
