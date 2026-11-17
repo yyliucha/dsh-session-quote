@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const zh = {
       'entry.label': '引用',
       'title': '引用历史消息',
-      'back': '返回会话',
+      'back': '切换会话',
       'close': '关闭',
       'loading': '读取中…',
       'noSessions': '当前工作区还没有其他会话',
@@ -19,6 +19,7 @@ window.__ModuleLoader__.load({
       'error': '读取失败',
       'error.noSettings': '设置服务不可用',
       'error.noEntry': '插件配置未加载，请重启后重试',
+      'error.busy': '编辑器暂时只读，请等上一条消息发送完成后再试',
       'search.placeholder': '搜索会话',
       'role.user': '我',
       'role.assistant': '助手',
@@ -31,7 +32,7 @@ window.__ModuleLoader__.load({
     const en = {
       'entry.label': 'Quote',
       'title': 'Quote an earlier message',
-      'back': 'Back to sessions',
+      'back': 'Switch session',
       'close': 'Close',
       'loading': 'Reading…',
       'noSessions': 'No other session in this workspace yet',
@@ -39,6 +40,7 @@ window.__ModuleLoader__.load({
       'error': 'Could not read',
       'error.noSettings': 'The settings service is unavailable',
       'error.noEntry': 'The plugin configuration is not loaded; restart and retry',
+      'error.busy': 'The composer is busy; wait for the previous message to finish sending',
       'search.placeholder': 'Search sessions',
       'role.user': 'Me',
       'role.assistant': 'Assistant',
@@ -210,7 +212,7 @@ window.__ModuleLoader__.load({
         listeners.add(listener)
         return () => listeners.delete(listener)
       }
-      const open = (key) => set(key, { ...EMPTY, open: true })
+      const open = (key, patch) => set(key, { ...EMPTY, open: true, ...patch })
       const close = (key) => set(key, { ...EMPTY })
       const back = (key) => set(key, { step: 'sessions', targetSessionId: undefined, messages: [], error: undefined, loading: false })
       return { read, set, subscribe, open, close, back }
@@ -258,8 +260,21 @@ window.__ModuleLoader__.load({
             .map((row) => ({ id: String(row.id), title: String(row.displayTitle ?? row.id), updatedAt: Number(row.updatedAt ?? 0) }))
         }, [sessions, cwd])
 
+        const loadMessages = async (targetId) => {
+          store.set(key, { ...EMPTY, open: true, step: 'messages', targetSessionId: targetId, loading: true })
+          try {
+            const result = await askHost(ctx, { op: 'messages', sessionId: targetId, limit: 80 })
+            store.set(key, { loading: false, messages: Array.isArray(result.messages) ? result.messages : [] })
+          } catch (error) {
+            store.set(key, { loading: false, error: String(error && error.message ? error.message : error) })
+          }
+        }
+
         const openPanel = () => {
-          store.open(key)
+          // Message level first: the composer entry opens on this session's
+          // messages, so a quote can be picked while a turn is still sending
+          // and the transcript action bars are hidden.
+          void loadMessages(key)
         }
 
         React.useEffect(() => {
@@ -310,14 +325,8 @@ window.__ModuleLoader__.load({
           }
         }, [snapshot.open, key, store])
 
-        const chooseSession = async (target) => {
-          store.set(key, { step: 'messages', targetSessionId: target.id, loading: true, error: undefined, messages: [] })
-          try {
-            const result = await askHost(ctx, { op: 'messages', sessionId: target.id, limit: 80 })
-            store.set(key, { loading: false, messages: Array.isArray(result.messages) ? result.messages : [] })
-          } catch (error) {
-            store.set(key, { loading: false, error: String(error && error.message ? error.message : error) })
-          }
+        const chooseSession = (target) => {
+          void loadMessages(target.id)
         }
 
         const quoteMessage = async (target, message) => {
@@ -342,7 +351,7 @@ window.__ModuleLoader__.load({
             if (!inserted) throw new Error('insert-refused')
             store.close(key)
           } catch (error) {
-            store.set(key, { quotingSeq: undefined, error: String(error && error.message ? error.message : error) })
+            store.set(key, { quotingSeq: undefined, error: (error && error.message) === 'insert-refused' ? t('error.busy') : String(error && error.message ? error.message : error) })
           }
         }
 
